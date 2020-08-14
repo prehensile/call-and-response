@@ -135,22 +135,28 @@ try:
 
             if (states.state_time() < listen_time) and ( vibe_count<len(sounds) ):
                 # check incoming network messages
+
                 msg = network.get_message()
+
                 if msg is not None:
-                    print( "message received: ", msg.message, msg.origin )
+
                     j = json.loads( msg.message )
 
-                    if j["client-id"] != client_id and ( random.random() < reply_chance ):
-                        # this is a message from someone else
-                        print( "... vibe to message with id:", j["message-id"])
+                    if j["client-id"] != client_id:
+                        
+                        print( "message received: ", msg.message, msg.origin )
+                        
+                        if random.random() < reply_chance:
+                            # this is a message from someone else
+                            print( "... vibe to message with id:", j["message-id"])
 
-                        # set repeat time to the amount of time it took someone else to reply to us
-                        # current_vibe_interval = states.state_time() + (random.random() * listen_time)
-                        current_vibe_interval =  0.2 + (random.random() * (listen_time*0.2))
+                            # set repeat time to the amount of time it took someone else to reply to us
+                            # current_vibe_interval = states.state_time() + (random.random() * listen_time)
+                            current_vibe_interval =  0.2 + (random.random() * (listen_time*0.2))
 
-                        # move to vibing state
-                        vibe_count += 1
-                        states.set_state( states.STATE_VIBING )
+                            # move to vibing state
+                            vibe_count += 1
+                            states.set_state( states.STATE_VIBING )
 
             else:
                 # no-one has made another sound during listening time, move to resting state
