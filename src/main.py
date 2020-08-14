@@ -133,7 +133,7 @@ try:
              # happens for a little time after ringing. 
              # wait to see if someone else is ringing a bell
 
-            if (states.state_time() < listen_time) and ( vibe_count<len(sounds) ):
+            if (states.state_time() < listen_time):
                 # check incoming network messages
 
                 msg = network.get_message()
@@ -146,7 +146,7 @@ try:
                         
                         print( "message received: ", msg.message, msg.origin )
                         
-                        if random.random() < reply_chance:
+                        if (random.random() < reply_chance):
                             # this is a message from someone else
                             print( "... vibe to message with id:", j["message-id"])
 
@@ -155,7 +155,7 @@ try:
                             current_vibe_interval =  0.2 + (random.random() * (listen_time*0.2))
 
                             # move to vibing state
-                            vibe_count += 1
+                            vibe_count = j["chime"] + 1
                             states.set_state( states.STATE_VIBING )
 
             else:
@@ -167,8 +167,11 @@ try:
 
             # wait for the vibe interval...
             if states.state_time() >= current_vibe_interval:
-                # then ring again
-                states.set_state( states.STATE_RINGING )
+                if vibe_count < len(sounds):
+                    # then ring again
+                    states.set_state( states.STATE_RINGING )
+                else:
+                    states.set_state( states.STATE_RESTING )
 
 
         elif states.state == states.STATE_RESTING:
