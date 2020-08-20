@@ -49,8 +49,6 @@ pygame.init()
 states = StateMachine()
 network = multicast.MulticastHandler()
 
-pixels = neopixels.PixelDisplay()
-pixels.brightness_decay = 0.999
 
 # load sounds
 fn_sounds = [ "01.wav", "02.wav", "03.wav", "04.wav" ]
@@ -67,6 +65,14 @@ max_rest_length = 12.0
 reply_chance = 0.6
 vibe_count = 0
 
+USE_NEOPIXELS = True
+USE_PUSHBUTTON = False
+
+pixels = None
+if USE_NEOPIXELS:
+    pixels = neopixels.PixelDisplay()
+    pixels.brightness_decay = 0.999
+
 
 try:
     
@@ -77,6 +83,8 @@ try:
     current_vibe_interval = 0
     client_id = "%s" % shortuuid.uuid()
     update_interval = 1.0 / 18.0
+    last_message_ts = 0.0
+    last_message_id = None
 
     
     def play_bell( index=None ):
@@ -106,7 +114,13 @@ try:
         
         now = time.time()
 
-        pixels.tick()
+        if USE_NEOPIXELS:
+            pixels.tick()
+
+        msg = network.get_message()
+        if msg is not None:
+            print( "message received: ", msg.message, msg.origin )
+
         
         if states.state == states.STATE_RINGING:
             
@@ -118,12 +132,15 @@ try:
             message = json.dumps( {
                 "chime" :  sounds.index(sound),
                 "client-id" : client_id,
-                "message-id" : shortuuid.uuid()
+                "message-id" : shortuuid.uuid(),
+                "timestamp" : time.time()
             } )
+            print( "send message:", message )
             network.send_message( message )
 
             # pretty lights!
-            pixels.pulse()
+            if USE_NEOPIXELS:
+                pixels.pulse()
 
             # set next state
             states.set_state( states.STATE_LISTENING )
@@ -136,19 +153,20 @@ try:
             if (states.state_time() < listen_time):
                 # check incoming network messages
 
-                msg = network.get_message()
-
                 if msg is not None:
 
                     j = json.loads( msg.message )
+                    message_ts = j["timestamp"]
+                    message_id = j["message-id"]
 
-                    if j["client-id"] != client_id:
+                    # if (j["client-id"] != client_id) and (message_ts > last_message_ts):
+                    if (j["client-id"] != client_id) and (message_id != last_message_id):
                         
-                        print( "message received: ", msg.message, msg.origin )
+                        # print( "message received: ", msg.message, msg.origin )
                         
                         if (random.random() < reply_chance):
                             # this is a message from someone else
-                            print( "... vibe to message with id:", j["message-id"])
+                            print( "... vibe to message with id:", message_id )
 
                             # set repeat time to the amount of time it took someone else to reply to us
                             # current_vibe_interval = states.state_time() + (random.random() * listen_time)
@@ -157,6 +175,8 @@ try:
                             # move to vibing state
                             vibe_count = j["chime"] + 1
                             states.set_state( states.STATE_VIBING )
+                    
+                        last_message_id = message_id
 
             else:
                 # no-one has made another sound during listening time, move to resting state
@@ -196,5 +216,7 @@ except Exception as e:
     logging.exception( e )
     
 print( "Shutting down...")
+if USE_NEOPIXELS:
+    pixels.fill( (0,0,0) )
 network.shutdown()
 pygame.quit()
