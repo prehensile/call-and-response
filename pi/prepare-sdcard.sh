@@ -4,3 +4,5 @@ touch $BOOT/ssh
 cp wpa_supplicant.conf $BOOT
 cp provision.sh $BOOT
 cp asound.conf $BOOT
+
+cp -R ../src $BOOT/canto    
